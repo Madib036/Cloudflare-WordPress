@@ -3,6 +3,6 @@ vendor/
 xdebug/*
 .phpunit.result.cache
 .idea
-
+.secrets
 # PHP-Scoper build output
 build/
