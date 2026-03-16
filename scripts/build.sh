@@ -37,16 +37,16 @@ cp cloudflare.php "${OUTPUT_DIR}/"
 cp cloudflare.loader.php "${OUTPUT_DIR}/"
 cp index.php "${OUTPUT_DIR}/"
 cp readme.txt "${OUTPUT_DIR}/"
-cp LICENSE.md "${OUTPUT_DIR}/" 2>/dev/null || true
-cp config.json "${OUTPUT_DIR}/" 2>/dev/null || true
-cp userConfig.js "${OUTPUT_DIR}/" 2>/dev/null || true
-cp compiled.js "${OUTPUT_DIR}/" 2>/dev/null || true
+cp LICENSE.md "${OUTPUT_DIR}/"
+cp config.json "${OUTPUT_DIR}/"
+cp userConfig.js "${OUTPUT_DIR}/"
+cp compiled.js "${OUTPUT_DIR}/"
 
 # Copy non-PHP assets
-cp -r assets "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r fonts "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r lang "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r stylesheets "${OUTPUT_DIR}/" 2>/dev/null || true
+cp -r assets "${OUTPUT_DIR}/"
+cp -r fonts "${OUTPUT_DIR}/"
+cp -r lang "${OUTPUT_DIR}/"
+cp -r stylesheets "${OUTPUT_DIR}/"
 
 # Copy prefixed vendor dependencies
 echo "📦 Copying prefixed vendor dependencies..."
