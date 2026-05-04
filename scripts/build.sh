@@ -37,16 +37,16 @@ cp cloudflare.php "${OUTPUT_DIR}/"
 cp cloudflare.loader.php "${OUTPUT_DIR}/"
 cp index.php "${OUTPUT_DIR}/"
 cp readme.txt "${OUTPUT_DIR}/"
-cp LICENSE.md "${OUTPUT_DIR}/" 2>/dev/null || true
-cp config.json "${OUTPUT_DIR}/" 2>/dev/null || true
-cp userConfig.js "${OUTPUT_DIR}/" 2>/dev/null || true
-cp compiled.js "${OUTPUT_DIR}/" 2>/dev/null || true
+cp LICENSE.md "${OUTPUT_DIR}/"
+cp config.json "${OUTPUT_DIR}/"
+cp userConfig.js "${OUTPUT_DIR}/"
+cp compiled.js "${OUTPUT_DIR}/"
 
 # Copy non-PHP assets
-cp -r assets "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r fonts "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r lang "${OUTPUT_DIR}/" 2>/dev/null || true
-cp -r stylesheets "${OUTPUT_DIR}/" 2>/dev/null || true
+cp -r assets "${OUTPUT_DIR}/"
+cp -r fonts "${OUTPUT_DIR}/"
+cp -r lang "${OUTPUT_DIR}/"
+cp -r stylesheets "${OUTPUT_DIR}/"
 
 # Copy prefixed vendor dependencies
 echo "📦 Copying prefixed vendor dependencies..."
@@ -76,7 +76,11 @@ php scripts/update-namespaces.php "${OUTPUT_DIR}"
 
 # Remove unsupported PHP 8 symfony/polyfill return types (for PHP 7.4 compatibility)
 echo "📝 Removing PHP 8 return types from symfony polyfills..."
-find "${OUTPUT_DIR}/vendor/symfony" -name "bootstrap80.php" -exec sed -i '' 's/: string|false/ /g' {} \;
+php scripts/fix-polyfill-return-types.php "${OUTPUT_DIR}/vendor"
+
+# Clean up intermediate build artifacts
+echo "🧹 Cleaning up intermediate build artifacts..."
+rm -rf "${VENDOR_PREFIXED_DIR}"
 
 # Restore dev dependencies for local development
 echo "🔄 Restoring dev dependencies..."

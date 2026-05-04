@@ -19,18 +19,28 @@ if ( ! is_dir( $buildDir ) ) {
 	exit( 1 );
 }
 
-// Replacements to make in use statements
-$replacements = [
-	'use Psr\\Log\\' => 'use ' . $prefix . '\\Psr\\Log\\',
-	'use CloudFlare\\' => 'use ' . $prefix . '\\CloudFlare\\',
-	'use Symfony\\Polyfill\\' => 'use ' . $prefix . '\\Symfony\\Polyfill\\',
-];
+// Vendor namespaces to prefix
+$replacements = [];
+foreach ( [
+	'Psr\\Log\\',
+	'CloudFlare\\',
+	'Symfony\\Polyfill\\',
+] as $ns ) {
+	$replacements[ $ns ] = $prefix . '\\' . $ns;
+}
+
+/**
+ * Apply namespace replacements to file content.
+ */
+function applyReplacements( string $content, array $replacements ): string {
+	return str_replace( array_keys( $replacements ), array_values( $replacements ), $content );
+}
 
 // Update cloudflare.loader.php
 $loaderFile = $buildDir . '/cloudflare.loader.php';
 if ( file_exists( $loaderFile ) ) {
 	$content = file_get_contents( $loaderFile );
-	$content = str_replace( array_keys( $replacements ), array_values( $replacements ), $content );
+	$content = applyReplacements( $content, $replacements );
 	file_put_contents( $loaderFile, $content );
 }
 
@@ -44,7 +54,7 @@ if ( is_dir( $srcDir ) ) {
 	foreach ( $iterator as $file ) {
 		if ( $file->getExtension() === 'php' ) {
 			$content = file_get_contents( $file->getPathname() );
-			$newContent = str_replace( array_keys( $replacements ), array_values( $replacements ), $content );
+			$newContent = applyReplacements( $content, $replacements );
 			if ( $content !== $newContent ) {
 				file_put_contents( $file->getPathname(), $newContent );
 			}

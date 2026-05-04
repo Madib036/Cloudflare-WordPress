@@ -4,6 +4,7 @@ namespace Cloudflare\APO\API;
 
 use Cloudflare\APO\Integration\DataStoreInterface;
 use Cloudflare\APO\Integration\DefaultIntegration;
+use Psr\Log\LoggerInterface;
 
 abstract class AbstractPluginActions
 {
@@ -64,7 +65,7 @@ abstract class AbstractPluginActions
         $this->dataStore = $dataStore;
     }
 
-    public function setLogger(\Psr\Log\LoggerInterface $logger)
+    public function setLogger(LoggerInterface $logger)
     {
         $this->logger = $logger;
     }
