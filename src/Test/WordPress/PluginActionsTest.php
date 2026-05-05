@@ -105,19 +105,79 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
         $this->pluginActions->applyDefaultSettings();
     }
 
-    public function testReturnApplyDefaultSettingsChangeZoneSettingsThrowsZoneSettingFailException()
+    public function testReturnApplyDefaultSettingsChangeZoneSettingsThrowsWithFailedSettingNames()
     {
         $this->expectException('\Cloudflare\APO\API\Exception\ZoneSettingFailException');
+        $this->expectExceptionMessageMatches('/Failed to update the following settings/');
 
         $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
 
-        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(false);
-
-        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(true);
+        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
+            array(
+                'result' => array(
+                    'plan' => array(
+                        'legacy_id' => Plans::FREE_PLAN,
+                    ),
+                ),
+            )
+        );
         $this->mockWordPressClientAPI->method('responseOk')->willReturn(true);
+        // All settings fail
         $this->mockWordPressClientAPI->method('changeZoneSettings')->willReturn(false);
-
+        // All 13 settings (Free plan) should still be attempted despite failures
+        $this->mockWordPressClientAPI->expects($this->exactly(13))->method('changeZoneSettings');
 
         $this->pluginActions->applyDefaultSettings();
+    }
+
+    public function testApplyDefaultSettingsContinuesAfterPartialFailure()
+    {
+        $this->expectException('\Cloudflare\APO\API\Exception\ZoneSettingFailException');
+        $this->expectExceptionMessageMatches('/hotlink_protection/');
+        $this->expectExceptionMessageMatches('/remaining settings were applied successfully/');
+
+        $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
+
+        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
+            array(
+                'result' => array(
+                    'plan' => array(
+                        'legacy_id' => Plans::FREE_PLAN,
+                    ),
+                ),
+            )
+        );
+        $this->mockWordPressClientAPI->method('responseOk')->willReturn(true);
+        // Only hotlink_protection (11th call, index 10) fails
+        $this->mockWordPressClientAPI->method('changeZoneSettings')->willReturnOnConsecutiveCalls(
+            true, true, true, true, true, true, true, true, true, true,
+            false, // hotlink_protection
+            true, true
+        );
+        // All 13 settings should be attempted
+        $this->mockWordPressClientAPI->expects($this->exactly(13))->method('changeZoneSettings');
+
+        $this->pluginActions->applyDefaultSettings();
+    }
+
+    public function testApplyDefaultSettingsSucceedsWhenAllSettingsPass()
+    {
+        $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
+
+        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
+            array(
+                'result' => array(
+                    'plan' => array(
+                        'legacy_id' => Plans::FREE_PLAN,
+                    ),
+                ),
+            )
+        );
+        $this->mockWordPressClientAPI->method('responseOk')->willReturn(true);
+        $this->mockWordPressClientAPI->method('changeZoneSettings')->willReturn(true);
+
+        // Should not throw any exception
+        $this->pluginActions->applyDefaultSettings();
+        $this->assertTrue(true); // Explicit assertion that we reached this point
     }
 }
