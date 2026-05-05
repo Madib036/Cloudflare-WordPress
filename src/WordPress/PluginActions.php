@@ -72,6 +72,11 @@ class PluginActions extends AbstractPluginActions
      * PATCH /plugin/:id/settings/default_settings
      *
      * Requests are synchronized
+     *
+     * @throws ZoneSettingFailException When zone details cannot be fetched, or
+     *         when one or more individual zone settings fail to update. In the
+     *         latter case the exception message lists the failed setting names
+     *         and confirms the remaining settings were applied successfully.
      */
     public function applyDefaultSettings()
     {
