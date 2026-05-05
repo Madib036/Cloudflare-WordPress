@@ -132,10 +132,6 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
 
     public function testApplyDefaultSettingsContinuesAfterPartialFailure()
     {
-        $this->expectException('\Cloudflare\APO\API\Exception\ZoneSettingFailException');
-        $this->expectExceptionMessageMatches('/hotlink_protection/');
-        $this->expectExceptionMessageMatches('/remaining settings were applied successfully/');
-
         $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
 
         $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
@@ -157,7 +153,16 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
         // All 13 settings should be attempted
         $this->mockWordPressClientAPI->expects($this->exactly(13))->method('changeZoneSettings');
 
-        $this->pluginActions->applyDefaultSettings();
+        try {
+            $this->pluginActions->applyDefaultSettings();
+            $this->fail('Expected ZoneSettingFailException was not thrown.');
+        } catch (\Cloudflare\APO\API\Exception\ZoneSettingFailException $e) {
+            $message = $e->getMessage();
+            // Combined assertions, since expectExceptionMessageMatches() is a setter
+            // and a second call would silently overwrite the first.
+            $this->assertStringContainsString('hotlink_protection', $message);
+            $this->assertMatchesRegularExpression('/remaining settings were applied successfully/', $message);
+        }
     }
 
     public function testApplyDefaultSettingsSucceedsWhenAllSettingsPass()
