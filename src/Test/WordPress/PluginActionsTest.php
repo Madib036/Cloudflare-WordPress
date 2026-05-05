@@ -101,15 +101,17 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
         $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
 
         $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(false);
+        // Explicitly drive the early-throw branch via responseOk() returning false,
+        // since the production code branches on responseOk(), not on the raw value.
+        $this->mockWordPressClientAPI->method('responseOk')->willReturn(false);
+        // changeZoneSettings must never be reached when zone details fail.
+        $this->mockWordPressClientAPI->expects($this->never())->method('changeZoneSettings');
 
         $this->pluginActions->applyDefaultSettings();
     }
 
     public function testReturnApplyDefaultSettingsChangeZoneSettingsThrowsWithFailedSettingNames()
     {
-        $this->expectException('\Cloudflare\APO\API\Exception\ZoneSettingFailException');
-        $this->expectExceptionMessageMatches('/Failed to update the following settings/');
-
         $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
 
         $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
@@ -127,7 +129,37 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
         // All 13 settings (Free plan) should still be attempted despite failures
         $this->mockWordPressClientAPI->expects($this->exactly(13))->method('changeZoneSettings');
 
-        $this->pluginActions->applyDefaultSettings();
+        try {
+            $this->pluginActions->applyDefaultSettings();
+            $this->fail('Expected ZoneSettingFailException was not thrown.');
+        } catch (\Cloudflare\APO\API\Exception\ZoneSettingFailException $e) {
+            $message = $e->getMessage();
+            $this->assertMatchesRegularExpression('/Failed to update the following settings/', $message);
+            // Every Free-plan setting name should appear in the failure list.
+            $expectedSettings = array(
+                'security_level',
+                'cache_level',
+                'browser_cache_ttl',
+                'always_online',
+                'development_mode',
+                'ipv6',
+                'websockets',
+                'ip_geolocation',
+                'email_obfuscation',
+                'server_side_exclude',
+                'hotlink_protection',
+                'rocket_loader',
+                'automatic_https_rewrites',
+            );
+            foreach ($expectedSettings as $name) {
+                $this->assertStringContainsString($name, $message);
+            }
+            // The list should be comma-separated.
+            $this->assertStringContainsString('security_level, cache_level', $message);
+            // The Account Owned Token hint should be included so users know why
+            // a permitted token may still see endpoint-level failures.
+            $this->assertStringContainsString('Account Owned Token', $message);
+        }
     }
 
     public function testApplyDefaultSettingsContinuesAfterPartialFailure()
@@ -162,6 +194,80 @@ class PluginActionsTest extends \PHPUnit\Framework\TestCase
             // and a second call would silently overwrite the first.
             $this->assertStringContainsString('hotlink_protection', $message);
             $this->assertMatchesRegularExpression('/remaining settings were applied successfully/', $message);
+        }
+    }
+
+    public function testApplyDefaultSettingsContinuesWhenFirstAndLastFreeSettingsFail()
+    {
+        // Regression test for the fail-fast bug: a failure on the very first
+        // setting must not abort the loop, and a later failure must still be
+        // collected. Failing the first and last Free-plan settings exercises
+        // both ends of the loop in a single test.
+        $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
+
+        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
+            array(
+                'result' => array(
+                    'plan' => array(
+                        'legacy_id' => Plans::FREE_PLAN,
+                    ),
+                ),
+            )
+        );
+        $this->mockWordPressClientAPI->method('responseOk')->willReturn(true);
+        $this->mockWordPressClientAPI->method('changeZoneSettings')->willReturnOnConsecutiveCalls(
+            false, // security_level (first)
+            true, true, true, true, true, true, true, true, true, true, true,
+            false  // automatic_https_rewrites (last)
+        );
+        $this->mockWordPressClientAPI->expects($this->exactly(13))->method('changeZoneSettings');
+
+        try {
+            $this->pluginActions->applyDefaultSettings();
+            $this->fail('Expected ZoneSettingFailException was not thrown.');
+        } catch (\Cloudflare\APO\API\Exception\ZoneSettingFailException $e) {
+            $message = $e->getMessage();
+            $this->assertStringContainsString('security_level', $message);
+            $this->assertStringContainsString('automatic_https_rewrites', $message);
+            // Settings that succeeded must not appear in the failure list.
+            $this->assertStringNotContainsString('cache_level', $message);
+            $this->assertStringNotContainsString('hotlink_protection', $message);
+        }
+    }
+
+    public function testApplyDefaultSettingsBusinessPlanContinuesAfterPolishFailure()
+    {
+        // Business plan adds `mirage` and `polish` (15 total). Verify the loop
+        // still attempts every setting and only the failing one is reported,
+        // exercising the conditional plan-tier extension of the settings list.
+        $this->mockRequest->method('getUrl')->willReturn('/plugin/:id/settings/default_settings');
+
+        $this->mockWordPressClientAPI->method('zoneGetDetails')->willReturn(
+            array(
+                'result' => array(
+                    'plan' => array(
+                        'legacy_id' => Plans::BIZ_PLAN,
+                    ),
+                ),
+            )
+        );
+        $this->mockWordPressClientAPI->method('responseOk')->willReturn(true);
+        // Only `polish` (15th call, index 14) fails.
+        $this->mockWordPressClientAPI->method('changeZoneSettings')->willReturnOnConsecutiveCalls(
+            true, true, true, true, true, true, true, true, true, true,
+            true, true, true,
+            true,  // mirage
+            false  // polish
+        );
+        $this->mockWordPressClientAPI->expects($this->exactly(15))->method('changeZoneSettings');
+
+        try {
+            $this->pluginActions->applyDefaultSettings();
+            $this->fail('Expected ZoneSettingFailException was not thrown.');
+        } catch (\Cloudflare\APO\API\Exception\ZoneSettingFailException $e) {
+            $message = $e->getMessage();
+            $this->assertStringContainsString('polish', $message);
+            $this->assertStringNotContainsString('mirage', $message);
         }
     }
 
