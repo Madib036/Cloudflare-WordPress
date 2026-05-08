@@ -12,7 +12,6 @@ class Client extends AbstractAPIClient
     const X_AUTH_KEY = 'X-Auth-Key';
     const X_AUTH_EMAIL = 'X-Auth-Email';
     const AUTHORIZATION = 'Authorization';
-    const AUTH_KEY_LEN = 37;
     const USER_AGENT = 'User-Agent';
 
     /**
