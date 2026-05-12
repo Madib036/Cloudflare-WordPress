@@ -99,7 +99,16 @@ Yes, Cloudflare works with, and helps speed up your site even more, if you have 
 
 == Changelog ==
 
-= 4.1x.y - YYYY/MM/DD =
+= 4.14.3 - 2026-05-12 =
+
+*Fixed*
+* FQCN references are now correctly rewritten by update-namespaces.php during build.
+* Fixed double pipes typo after ttf in htaccess.
+* Recognize new cfk_/cfut_/cfat_ credential formats
+* Apply settings fail-fast when using Account Owned Tokens
+* Partial-failure test silently overwriting message regex assertion
+* PHP 8.4 deprecation by marking $previous parameter explicitly nullable
+* Now trimming apiKey and email to prevent whitespace issues on authentication.
 
 *Changed*
 
