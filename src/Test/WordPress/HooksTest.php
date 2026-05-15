@@ -7,16 +7,6 @@ use Cloudflare\APO\API\Plugin;
 use Cloudflare\APO\Integration\DefaultIntegration;
 use phpmock\phpunit\PHPMock;
 
-// WP_Post is a WordPress core class not available in the test environment.
-// Hooks::purgeCacheByRelevantURLs uses is_a($savedPost, 'WP_Post') as a type
-// guard, so aliasing stdClass under the WP_Post name is enough to satisfy it.
-if (!class_exists('\WP_Post')) {
-    class_alias('stdClass', 'WP_Post');
-}
-if (!class_exists('\WP_Taxonomy')) {
-    class_alias('stdClass', 'WP_Taxonomy');
-}
-
 class HooksTest extends \PHPUnit\Framework\TestCase
 {
     use PHPMock;
